@@ -1,6 +1,7 @@
 """Voice Translater — 语音翻译工具"""
 
 import sys
+import os
 
 # 支持的语言列表
 SUPPORTED_LANGS = {
@@ -18,7 +19,7 @@ def list_languages():
     """列出所有支持的目标语言"""
     print("支持的语言:")
     for code, name in SUPPORTED_LANGS.items():
-        print(f"  {code} → {name}")
+        print(f"  {code} -> {name}")
 
 
 def detect_language(text: str) -> str:
@@ -44,9 +45,73 @@ def translate(text: str, target_lang: str = "en") -> str:
     return f"[{target_lang}] {text}"
 
 
+# ── 测试套件 ──
+# 运行方式: python main.py --test
+
+def _run_tests():
+    """运行内建测试"""
+    passed, failed = 0, 0
+
+    def check(name, actual, expected):
+        nonlocal passed, failed
+        if actual == expected:
+            passed += 1
+            print(f"  ✓ {name}")
+        else:
+            failed += 1
+            print(f"  ✗ {name} — 期望: {expected!r}, 实际: {actual!r}")
+
+    print("=" * 44)
+    print("  Voice Translater — 内建测试套件")
+    print("=" * 44)
+
+    # ── 语言检测 ──
+    print("\n[语言检测]")
+    check("纯中文",  detect_language("你好世界"), "zh")
+    check("纯英文",  detect_language("Hello world"), "en")
+    check("中英混合", detect_language("hello 你好"), "zh")
+    check("空字符串", detect_language(""), "en")
+    check("仅标点",  detect_language("!@#$%"), "en")
+
+    # ── 翻译输出 ──
+    print("\n[翻译输出]")
+    for lang, name in [("en", "英文"), ("ja", "日文"), ("ko", "韩文"),
+                        ("fr", "法文"), ("de", "德文"), ("es", "西班牙文"), ("zh", "中文")]:
+        check(f"→{name} ({lang})", translate("Hello", lang), f"[{lang}] Hello")
+
+    # ── 边界情况 ──
+    print("\n[边界情况]")
+    check("空输入 → en", translate("", "en"), "[en] ")
+    check("超80字符",  translate("x" * 100, "en"), f"[en] {'x' * 100}")
+
+    # 不支持的语言
+    try:
+        translate("hi", "xx")
+        check("不支持语言应 exit", "no_exit", "SystemExit")
+    except SystemExit:
+        check("不支持语言应 exit", "SystemExit", "SystemExit")
+
+    # ── 辅助 ──
+    print("\n[辅助功能]")
+    check("语言列表数量", len(SUPPORTED_LANGS) >= 7, True)
+
+    # ── 报告 ──
+    total = passed + failed
+    print(f"\n{'=' * 44}")
+    print(f"  结果: {passed}/{total} 通过, {failed}/{total} 失败")
+    print("=" * 44)
+    return failed == 0
+
+
 def main():
+    # --test 模式
+    if "--test" in sys.argv:
+        ok = _run_tests()
+        sys.exit(0 if ok else 1)
+
     if len(sys.argv) < 2:
         print("用法: python main.py <文本> [目标语言]")
+        print("测试: python main.py --test")
         print("示例: python main.py '你好世界' en")
         list_languages()
         sys.exit(1)
