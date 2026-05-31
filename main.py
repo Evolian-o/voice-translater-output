@@ -1,60 +1,62 @@
-"""Voice Translater — 语音翻译工具"""
+"""URL Shortener — 短链接生成器"""
 
+import hashlib
 import sys
 
-# 支持的语言列表
-SUPPORTED_LANGS = {
-    "en": "英语",
-    "zh": "中文",
-    "ja": "日语",
-    "ko": "韩语",
-    "fr": "法语",
-    "de": "德语",
-    "es": "西班牙语",
-}
+URL_STORE: dict[str, str] = {}
 
 
-def list_languages():
-    """列出所有支持的目标语言"""
-    print("支持的语言:")
-    for code, name in SUPPORTED_LANGS.items():
-        print(f"  {code} → {name}")
+def shorten(url: str) -> str:
+    """将长链接转为短码"""
+    code = hashlib.md5(url.encode()).hexdigest()[:6]
+    URL_STORE[code] = url
+    return code
 
 
-def detect_language(text: str) -> str:
-    """简单检测输入文本是否包含中文字符"""
-    for ch in text:
-        if '一' <= ch <= '鿿':
-            return "zh"
-    return "en"
-
-
-def translate(text: str, target_lang: str = "en") -> str:
-    """将输入文本翻译为目标语言"""
-    if target_lang not in SUPPORTED_LANGS:
-        print(f"不支持的语言: {target_lang}")
-        print(f"支持的语言: {', '.join(SUPPORTED_LANGS.keys())}")
-        sys.exit(1)
-
-    src_lang = detect_language(text)
-    lang_name = SUPPORTED_LANGS.get(target_lang, target_lang)
-    print(f"[翻译] 检测源语言: {src_lang}")
-    print(f"[翻译] 输入: {text[:80]}{'...' if len(text) > 80 else ''}")
-    print(f"[翻译] 目标语言: {lang_name} ({target_lang})")
-    return f"[{target_lang}] {text}"
+def expand(code: str) -> str | None:
+    """根据短码查找原始链接"""
+    return URL_STORE.get(code)
 
 
 def main():
     if len(sys.argv) < 2:
-        print("用法: python main.py <文本> [目标语言]")
-        print("示例: python main.py '你好世界' en")
-        list_languages()
-        sys.exit(1)
+        print("URL Shortener 用法:")
+        print("  python main.py shorten <url>  — 生成短码")
+        print("  python main.py expand <code>   — 还原链接")
+        print("  python main.py list            — 列出所有映射")
+        sys.exit(0)
 
-    text = sys.argv[1]
-    target = sys.argv[2] if len(sys.argv) > 2 else "en"
-    result = translate(text, target)
-    print(f"结果: {result}")
+    cmd = sys.argv[1]
+
+    if cmd == "shorten":
+        if len(sys.argv) < 3:
+            print("请提供 URL")
+            sys.exit(1)
+        url = sys.argv[2]
+        code = shorten(url)
+        print(f"短码: {code}  ->  {url}")
+
+    elif cmd == "expand":
+        if len(sys.argv) < 3:
+            print("请提供短码")
+            sys.exit(1)
+        code = sys.argv[2]
+        url = expand(code)
+        if url:
+            print(f"原始链接: {url}")
+        else:
+            print(f"未找到短码: {code}")
+
+    elif cmd == "list":
+        if not URL_STORE:
+            print("暂无映射")
+        else:
+            for code, url in URL_STORE.items():
+                print(f"  {code}  ->  {url}")
+
+    else:
+        print(f"未知命令: {cmd}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
